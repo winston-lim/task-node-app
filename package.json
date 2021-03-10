@@ -17,6 +17,8 @@
   },
   "homepage": "https://github.com/winston-lim/task-node-app#readme",
   "dependencies": {
-    "mongodb": "^3.6.4"
+    "mongodb": "^3.6.4",
+    "mongoose": "^5.11.19",
+    "validator": "^13.5.2"
   }
 }
