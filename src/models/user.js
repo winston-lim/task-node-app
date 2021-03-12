@@ -48,12 +48,21 @@ const userSchema = mongoose.Schema(
         type: String,
         required: true,
       }
-    }]
+    }],
+    avatar: {
+      type: Buffer,
+    }
   },
   {
     timestamps: true,
   }
 );
+
+userSchema.virtual('tasks', {
+	ref: 'Task',
+	localField: "_id",
+	foreignField: "owner",
+})
 
 userSchema.methods.generateAuthToken = async function() {
   const user = this;
@@ -63,11 +72,14 @@ userSchema.methods.generateAuthToken = async function() {
   return token;
 }
 
+//Express by default converts response with .toJSON
+//By overwriting toJSON,we define what the output is
 userSchema.methods.toJSON = function() {
   const user = this;
   const userObject = user.toObject();
   delete userObject.password;
   delete userObject.tokens;  
+  delete userObject.avatar;
   return userObject;
 }
 

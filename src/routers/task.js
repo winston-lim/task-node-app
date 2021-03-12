@@ -15,8 +15,25 @@ router.post('/tasks', auth, async (request, response) => {
 
 router.get('/tasks', auth, async (request, response) => {
     try {
-        const tasks = await Task.find({owner: request.user._id})
-        response.send(tasks)
+        const match = {};
+        const sort = {};
+        if (request.query.completed) {
+            match.completed = request.query.completed === 'true'
+        }
+        if (request.query.sortBy) {
+            const parts = request.query.sortBy.split(":");
+            sort[parts[0]] = parts[1]==='asc'? 1: -1;
+        }
+        await request.user.populate({
+            path: 'tasks',
+            match,
+            options: {
+                limit: parseInt(request.query.limit),
+                skip: parseInt(request.query.skip),
+                sort,
+            }
+        }).execPopulate();
+        response.send(request.user.tasks);
     } catch (e) {
         response.status(500).send()
     }

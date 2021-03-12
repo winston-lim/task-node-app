@@ -2,6 +2,8 @@ const express = require('express')
 const User = require('../models/user')
 const auth = require('../middleware/auth');
 const { request } = require('express');
+const multer = require('multer');
+  
 const router = new express.Router()
 
 router.post('/users', async (request, response) => {
@@ -76,4 +78,44 @@ router.delete('/users/me', auth, async (request, response) => {
     }
 })
 
-module.exports = router
+const upload = multer({
+    limits: {
+        fileSize: 1000000,
+    },
+    fileFilter(request, file, callback) {
+        if(!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
+            return callback(new Error('Unsupported file type(s)'));
+        }
+        callback(undefined,true);
+    }
+})
+
+router.post('/users/me/avatar', auth,upload.single('avatar'), async (request,response)=> {
+    request.user.avatar = request.file.buffer;
+    await request.user.save();
+    response.send();
+  }, (error,request,response, next)=>response.status(400).send(error.message));
+
+router.delete('/users/me/avatar', auth, async (request,response)=> {
+    if (!request.user.avatar) {
+        return response.status(400).send({message: 'Avatar does not exist'});
+    }
+    request.user.avatar = undefined;
+    await request.user.save();
+    response.send({message: 'Avatar deleted!'});
+})
+router.get('/users/:id/avatar', async (request,response)=> {
+    try {
+        const user = await User.findById(request.params.id);
+        if (!user || !user.avatar) {
+            throw new Error();
+        }
+        response.set('Content-Type', 'image/jpg');
+        //default Content-Type was set to 'application/json' for us by express
+        //now we say that the return type is jpg
+        response.send(user.avatar);
+    } catch (e) {
+        response.status(404).send();
+    }  
+})
+module.exports = router;
