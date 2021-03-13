@@ -4,7 +4,7 @@ const auth = async (request,response,next) => {
   try {
     const token = request.header('Authorization').replace('Bearer ', '');
     //decoded is the payload of the token if signature is correct
-    const decoded = jwt.verify(token, 'privateKey');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     //_id of token is set to be same as _id of user on creation
     //'tokens.token' string property syntax is for searching through the tokens array and comparing each token object to a value
     const user = await User.findOne({_id: decoded._id, 'tokens.token': token});

@@ -1,8 +1,10 @@
 const express = require('express')
-const User = require('../models/user')
-const auth = require('../middleware/auth');
 const { request } = require('express');
 const multer = require('multer');
+const sharp = require('sharp');
+const User = require('../models/user')
+const auth = require('../middleware/auth');
+const {sendWelcomeEmail, sendExitEmail} = require('../emails/accounts');
   
 const router = new express.Router()
 
@@ -10,6 +12,7 @@ router.post('/users', async (request, response) => {
     const user = new User(request.body)
     try {
         await user.save(); //this is to hash and store password;
+        sendWelcomeEmail(user.email, user.name);
         await User.login(request.body.email, request.body.password);
         const token = await user.generateAuthToken();
         response.status(201).send({user,token})
@@ -72,6 +75,7 @@ router.patch('/users/me', auth, async (request, response) => {
 router.delete('/users/me', auth, async (request, response) => {
     try {
         await request.user.remove();
+        sendExitEmail(request.user.email,request.user.name);
         response.send(request.user);
     } catch (e) {
         res.status(500).send()
@@ -91,10 +95,12 @@ const upload = multer({
 })
 
 router.post('/users/me/avatar', auth,upload.single('avatar'), async (request,response)=> {
-    request.user.avatar = request.file.buffer;
+    const buffer = await sharp(request.file.buffer).resize({width:250, height:250}).png().toBuffer();
+    request.user.avatar = buffer;
     await request.user.save();
     response.send();
-  }, (error,request,response, next)=>response.status(400).send(error.message));
+  }, (error,request,response, next)=>response.status(400).send(error.message)
+  );
 
 router.delete('/users/me/avatar', auth, async (request,response)=> {
     if (!request.user.avatar) {
@@ -110,7 +116,7 @@ router.get('/users/:id/avatar', async (request,response)=> {
         if (!user || !user.avatar) {
             throw new Error();
         }
-        response.set('Content-Type', 'image/jpg');
+        response.set('Content-Type', 'image/png');
         //default Content-Type was set to 'application/json' for us by express
         //now we say that the return type is jpg
         response.send(user.avatar);
